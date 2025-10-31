@@ -1,11 +1,27 @@
 import streamlit as st
 import anthropic
 import json
-from typing import List, Dict, Tuple
+from typing import List, Dict
 import time
 from datetime import datetime
+import os
+from dotenv import load_dotenv
+import sys
 
-# RAG System Evaluator
+# Add apps directory to path so we can import SimpleRAG
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+# Load environment variables
+load_dotenv()
+
+# Import SimpleRAG from rag_app
+try:
+    from apps.rag_app import SimpleRAG
+except ImportError:
+    st.error("❌ Could not import SimpleRAG. Make sure apps/rag_app.py exists and is correct.")
+    st.stop()
+
+# Automated RAG Evaluator - Connects to Simple RAG
 # Evaluates RAG system quality using groundtruth Q&A pairs
 
 class RAGEvaluator:
@@ -100,15 +116,13 @@ Respond in JSON format:
             "key_issues": ["Evaluation error"]
         }
     
-    def batch_evaluate(self, rag_system, qa_pairs: List[Dict]) -> Dict:
+    def batch_evaluate(self, rag_system: SimpleRAG, qa_pairs: List[Dict], 
+                      progress_bar, status_text) -> Dict:
         """Evaluate RAG system on multiple Q&A pairs"""
         results = []
         
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        
         for i, qa in enumerate(qa_pairs):
-            status_text.text(f"Evaluating {i+1}/{len(qa_pairs)}...")
+            status_text.text(f"Evaluating {i+1}/{len(qa_pairs)}: {qa['question'][:50]}...")
             
             # Get RAG system answer
             rag_response = rag_system.answer_question(qa['question'])
@@ -133,7 +147,7 @@ Respond in JSON format:
             progress_bar.progress((i + 1) / len(qa_pairs))
             time.sleep(0.5)  # Rate limiting
         
-        status_text.text("Evaluation complete!")
+        status_text.text("✅ Evaluation complete!")
         
         # Aggregate metrics
         return self._aggregate_results(results)
@@ -163,10 +177,11 @@ Respond in JSON format:
         
         for diff in difficulties:
             diff_results = [r for r in results if r['difficulty'] == diff]
-            aggregate['by_difficulty'][diff] = {
-                'count': len(diff_results),
-                'avg_correctness': sum(r['scores']['correctness'] for r in diff_results) / len(diff_results)
-            }
+            if diff_results:
+                aggregate['by_difficulty'][diff] = {
+                    'count': len(diff_results),
+                    'avg_correctness': sum(r['scores']['correctness'] for r in diff_results) / len(diff_results)
+                }
         
         # By question type
         types = set(r['type'] for r in results)
@@ -174,10 +189,11 @@ Respond in JSON format:
         
         for qtype in types:
             type_results = [r for r in results if r['type'] == qtype]
-            aggregate['by_type'][qtype] = {
-                'count': len(type_results),
-                'avg_correctness': sum(r['scores']['correctness'] for r in type_results) / len(type_results)
-            }
+            if type_results:
+                aggregate['by_type'][qtype] = {
+                    'count': len(type_results),
+                    'avg_correctness': sum(r['scores']['correctness'] for r in type_results) / len(type_results)
+                }
         
         return aggregate
 
@@ -185,13 +201,20 @@ Respond in JSON format:
 def main():
     st.set_page_config(page_title="RAG Evaluator", page_icon="📊", layout="wide")
     
-    st.title("📊 RAG System Evaluator")
+    st.title("📊 Automated RAG System Evaluator")
     st.markdown("Comprehensive evaluation of RAG systems using groundtruth datasets")
     
     # Sidebar
     with st.sidebar:
         st.header("⚙️ Configuration")
-        api_key = st.text_input("Anthropic API Key", type="password")
+        
+        # Get API key from environment or user input
+        default_api_key = os.getenv("ANTHROPIC_API_KEY", "")
+        api_key = st.text_input(
+            "Anthropic API Key",
+            value=default_api_key,
+            type="password"
+        )
         
         st.markdown("---")
         st.header("Evaluation Metrics")
@@ -201,32 +224,86 @@ def main():
         st.markdown("**Correctness**: Compared to ground truth")
         
         st.markdown("---")
-        st.markdown("### Evaluation Methods")
-        st.markdown("1. **LLM-as-Judge**: Claude evaluates quality")
-        st.markdown("2. **Multi-dimensional**: 4 key metrics")
-        st.markdown("3. **Stratified**: By difficulty & question type")
+        st.markdown("### How It Works")
+        st.markdown("1. Loads your document into Simple RAG")
+        st.markdown("2. Asks each question from groundtruth")
+        st.markdown("3. Evaluates answers with 4 metrics")
+        st.markdown("4. Shows aggregate results")
     
-    # Tabs for different evaluation modes
-    tab1, tab2, tab3 = st.tabs(["📁 Load Data", "🧪 Run Evaluation", "📈 Results"])
+    # Initialize session state
+    if 'qa_pairs' not in st.session_state:
+        st.session_state.qa_pairs = []
+    if 'document_loaded' not in st.session_state:
+        st.session_state.document_loaded = False
+    if 'rag_system' not in st.session_state:
+        st.session_state.rag_system = None
+    if 'eval_results' not in st.session_state:
+        st.session_state.eval_results = None
+    
+    # Tabs for workflow
+    tab1, tab2, tab3, tab4 = st.tabs(["📁 Load Document", "📋 Load Q&A Dataset", "🧪 Run Evaluation", "📈 Results"])
     
     with tab1:
-        st.header("Load Groundtruth Dataset")
+        st.header("Load Document into RAG System")
         
-        col1, col2 = st.columns(2)
+        st.markdown("**Upload PDF or paste text:**")
+        
+        col1, col2 = st.columns([2, 1])
         
         with col1:
-            uploaded_file = st.file_uploader("Upload Q&A JSON file", type=['json'])
+            uploaded_doc = st.file_uploader("Upload PDF", type=['pdf'], key="doc_upload")
+            doc_text = st.text_area("Or paste document text", height=200)
+        
+        with col2:
+            st.info("💡 This is the document your RAG will be tested on")
+        
+        if st.button("🚀 Load Document into RAG", type="primary"):
+            if not api_key:
+                st.error("⚠️ Please provide API key")
+            else:
+                document_text = ""
+                
+                if uploaded_doc:
+                    try:
+                        import PyPDF2
+                        from io import BytesIO
+                        
+                        pdf_reader = PyPDF2.PdfReader(BytesIO(uploaded_doc.read()))
+                        for page in pdf_reader.pages:
+                            document_text += page.extract_text() + "\n\n"
+                    except Exception as e:
+                        st.error(f"PDF read error: {str(e)}")
+                elif doc_text:
+                    document_text = doc_text
+                
+                if document_text:
+                    with st.spinner("Loading document into RAG system..."):
+                        st.session_state.rag_system = SimpleRAG(api_key)
+                        st.session_state.rag_system.load_document(document_text)
+                        st.session_state.document_loaded = True
+                    
+                    st.success(f"✅ Document loaded! ({len(st.session_state.rag_system.chunks)} chunks)")
+                else:
+                    st.error("⚠️ Please provide a document")
+    
+    with tab2:
+        st.header("Load Groundtruth Q&A Dataset")
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            uploaded_qa = st.file_uploader("Upload Q&A JSON file", type=['json'], key="qa_upload")
             
-            if uploaded_file:
+            if uploaded_qa:
                 try:
-                    qa_data = json.load(uploaded_file)
+                    qa_data = json.load(uploaded_qa)
                     st.session_state.qa_pairs = qa_data
                     st.success(f"✅ Loaded {len(qa_data)} Q&A pairs")
                 except Exception as e:
                     st.error(f"Error loading file: {str(e)}")
         
         with col2:
-            st.markdown("**Sample Data Format:**")
+            st.markdown("**JSON Format:**")
             st.code('''[
   {
     "id": 1,
@@ -237,62 +314,61 @@ def main():
   }
 ]''', language='json')
         
-        if 'qa_pairs' in st.session_state and st.session_state.qa_pairs:
+        if st.session_state.qa_pairs:
             st.markdown(f"**Dataset loaded:** {len(st.session_state.qa_pairs)} Q&A pairs")
             
-            # Preview
-            with st.expander("Preview data"):
-                st.json(st.session_state.qa_pairs[:3])
+            with st.expander("📖 Preview questions"):
+                for qa in st.session_state.qa_pairs[:5]:
+                    st.markdown(f"**Q{qa.get('id')}:** {qa.get('question')}")
+                    st.caption(f"Difficulty: {qa.get('difficulty')} | Type: {qa.get('type')}")
+                    st.markdown("---")
     
-    with tab2:
-        st.header("Run Evaluation")
+    with tab3:
+        st.header("Run Automated Evaluation")
         
-        if 'qa_pairs' not in st.session_state or not st.session_state.qa_pairs:
-            st.warning("⚠️ Please load a groundtruth dataset first")
+        if not st.session_state.document_loaded:
+            st.warning("⚠️ Please load a document first (Tab 1)")
+        elif not st.session_state.qa_pairs:
+            st.warning("⚠️ Please load a Q&A dataset first (Tab 2)")
         else:
-            st.markdown(f"**Ready to evaluate:** {len(st.session_state.qa_pairs)} questions")
-            
-            # RAG system selection
-            st.markdown("### Select RAG System")
-            st.info("🔧 In production, you would connect to your RAG system API here. For this demo, evaluation logic is shown.")
+            st.markdown(f"**Ready to evaluate:**")
+            st.markdown(f"- Document: {len(st.session_state.rag_system.chunks)} chunks loaded")
+            st.markdown(f"- Questions: {len(st.session_state.qa_pairs)} Q&A pairs")
             
             num_to_eval = st.slider(
                 "Number of questions to evaluate",
                 1,
-                min(len(st.session_state.qa_pairs), 20),
+                len(st.session_state.qa_pairs),
                 min(10, len(st.session_state.qa_pairs))
             )
             
-            if st.button("🚀 Start Evaluation", type="primary", disabled=not api_key):
+            if st.button("🚀 Start Evaluation", type="primary"):
                 if not api_key:
-                    st.error("Please provide API key")
+                    st.error("⚠️ Please provide API key")
                 else:
                     evaluator = RAGEvaluator(api_key)
                     
-                    st.markdown("### Evaluation in Progress...")
-                    st.info("This would evaluate your RAG system. For demo, showing evaluation framework.")
+                    st.markdown("### 🔄 Evaluation in Progress...")
+                    progress_bar = st.progress(0)
+                    status_text = st.empty()
                     
-                    # Mock evaluation for demo
-                    st.session_state.eval_results = {
-                        'total_questions': num_to_eval,
-                        'avg_faithfulness': 4.2,
-                        'avg_answer_relevancy': 4.5,
-                        'avg_context_relevancy': 3.8,
-                        'avg_correctness': 4.0,
-                        'by_difficulty': {
-                            'easy': {'count': 4, 'avg_correctness': 4.5},
-                            'medium': {'count': 4, 'avg_correctness': 4.0},
-                            'hard': {'count': 2, 'avg_correctness': 3.5}
-                        }
-                    }
+                    # Run evaluation
+                    eval_results = evaluator.batch_evaluate(
+                        st.session_state.rag_system,
+                        st.session_state.qa_pairs[:num_to_eval],
+                        progress_bar,
+                        status_text
+                    )
+                    
+                    st.session_state.eval_results = eval_results
                     
                     st.success("✅ Evaluation complete!")
                     st.balloons()
     
-    with tab3:
+    with tab4:
         st.header("Evaluation Results")
         
-        if 'eval_results' not in st.session_state:
+        if st.session_state.eval_results is None:
             st.info("👈 Run evaluation first to see results")
         else:
             results = st.session_state.eval_results
@@ -304,39 +380,100 @@ def main():
             
             with col1:
                 score = results.get('avg_faithfulness', 0)
-                st.metric("Faithfulness", f"{score:.2f}/5", delta=f"{score-3:.1f}")
+                delta = "good" if score >= 4 else "poor"
+                st.metric("Faithfulness", f"{score:.2f}/5", delta=delta)
             
             with col2:
                 score = results.get('avg_answer_relevancy', 0)
-                st.metric("Answer Relevancy", f"{score:.2f}/5", delta=f"{score-3:.1f}")
+                delta = "good" if score >= 4 else "poor"
+                st.metric("Answer Relevancy", f"{score:.2f}/5", delta=delta)
             
             with col3:
                 score = results.get('avg_context_relevancy', 0)
-                st.metric("Context Relevancy", f"{score:.2f}/5", delta=f"{score-3:.1f}")
+                delta = "good" if score >= 4 else "poor"
+                st.metric("Context Relevancy", f"{score:.2f}/5", delta=delta)
             
             with col4:
                 score = results.get('avg_correctness', 0)
-                st.metric("Correctness", f"{score:.2f}/5", delta=f"{score-3:.1f}")
+                delta = "good" if score >= 4 else "poor"
+                st.metric("Correctness", f"{score:.2f}/5", delta=delta)
+            
+            # Overall score
+            avg_overall = (
+                results.get('avg_faithfulness', 0) +
+                results.get('avg_answer_relevancy', 0) +
+                results.get('avg_context_relevancy', 0) +
+                results.get('avg_correctness', 0)
+            ) / 4
+            
+            st.markdown("---")
+            st.markdown(f"### 🎯 Overall Score: **{avg_overall:.2f}/5**")
+            
+            if avg_overall >= 4.0:
+                st.success("✅ Excellent performance! Ready for production.")
+            elif avg_overall >= 3.5:
+                st.info("👍 Good performance. Consider minor improvements.")
+            elif avg_overall >= 3.0:
+                st.warning("⚠️ Acceptable but needs improvement.")
+            else:
+                st.error("❌ Poor performance. Significant improvements needed.")
             
             # By difficulty
+            st.markdown("---")
             st.subheader("📈 Performance by Difficulty")
             
             if 'by_difficulty' in results:
-                cols = st.columns(len(results['by_difficulty']))
+                diff_cols = st.columns(len(results['by_difficulty']))
                 for i, (diff, data) in enumerate(results['by_difficulty'].items()):
-                    with cols[i]:
+                    with diff_cols[i]:
                         st.metric(
                             diff.capitalize(),
                             f"{data['avg_correctness']:.2f}/5",
                             delta=f"{data['count']} questions"
                         )
             
+            # By question type
+            st.markdown("---")
+            st.subheader("📋 Performance by Question Type")
+            
+            if 'by_type' in results:
+                for qtype, data in results['by_type'].items():
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.markdown(f"**{qtype}**")
+                    with col2:
+                        st.markdown(f"{data['avg_correctness']:.2f}/5 ({data['count']} questions)")
+            
+            # Individual results
+            st.markdown("---")
+            st.subheader("📝 Individual Question Results")
+            
+            for i, result in enumerate(results.get('individual_results', [])[:10]):
+                with st.expander(f"Q{i+1}: {result['question'][:80]}..."):
+                    st.markdown(f"**Question:** {result['question']}")
+                    st.markdown(f"**Ground Truth:** {result['ground_truth'][:200]}...")
+                    st.markdown(f"**Generated:** {result['generated_answer'][:200]}...")
+                    
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.caption(f"Faithfulness: {result['scores']['faithfulness']}/5")
+                    with col2:
+                        st.caption(f"Relevancy: {result['scores']['answer_relevancy']}/5")
+                    with col3:
+                        st.caption(f"Context: {result['scores']['context_relevancy']}/5")
+                    with col4:
+                        st.caption(f"Correct: {result['scores']['correctness']}/5")
+                    
+                    if result['scores'].get('explanation'):
+                        st.info(result['scores']['explanation'])
+            
             # Export
+            st.markdown("---")
             st.subheader("💾 Export Results")
             
-            json_results = json.dumps(results, indent=2)
+            json_results = json.dumps(results, indent=2, ensure_ascii=False)
             st.download_button(
-                "📥 Download Results (JSON)",
+                "📥 Download Full Results (JSON)",
                 json_results,
                 "rag_evaluation_results.json",
                 "application/json"
