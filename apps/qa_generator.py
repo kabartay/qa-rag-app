@@ -3,9 +3,14 @@ import anthropic
 import json
 from typing import List, Dict
 import csv
-from io import StringIO
+from io import StringIO, BytesIO
+import os
+from dotenv import load_dotenv
 
-# Groundtruth Q&A Pair Generator
+# Load environment variables
+load_dotenv()
+
+# Groundtruth Q&A Pair Generator with PDF Upload Support
 # Automatically generates question-answer pairs from documents for evaluation
 
 class QAGenerator:
@@ -77,20 +82,6 @@ Generate exactly {num_pairs} Q&A pairs."""
         except Exception as e:
             st.error(f"Error generating Q&A pairs: {str(e)}")
             return []
-    
-    def generate_diverse_qa_batch(self, text: str, batch_config: Dict) -> List[Dict]:
-        """Generate multiple batches with different configurations"""
-        all_pairs = []
-        
-        for config in batch_config['batches']:
-            pairs = self.generate_qa_pairs(
-                text, 
-                num_pairs=config['count'],
-                difficulty=config['difficulty']
-            )
-            all_pairs.extend(pairs)
-        
-        return all_pairs
 
 
 def export_to_json(qa_pairs: List[Dict]) -> str:
@@ -115,6 +106,21 @@ def export_to_csv(qa_pairs: List[Dict]) -> str:
     return output.getvalue()
 
 
+def extract_text_from_pdf(uploaded_file) -> str:
+    """Extract text from uploaded PDF file"""
+    try:
+        import PyPDF2
+        
+        pdf_reader = PyPDF2.PdfReader(BytesIO(uploaded_file.read()))
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n\n"
+        
+        return text
+    except Exception as e:
+        raise Exception(f"Error extracting PDF: {str(e)}")
+
+
 def main():
     st.set_page_config(page_title="Q&A Groundtruth Generator", page_icon="🎯", layout="wide")
     
@@ -124,7 +130,14 @@ def main():
     # Sidebar configuration
     with st.sidebar:
         st.header("⚙️ Configuration")
-        api_key = st.text_input("Anthropic API Key", type="password")
+        
+        # Get API key from environment or user input
+        default_api_key = os.getenv("ANTHROPIC_API_KEY", "")
+        api_key = st.text_input(
+            "Anthropic API Key",
+            value=default_api_key,
+            type="password"
+        )
         
         st.markdown("---")
         st.header("Generation Settings")
@@ -150,17 +163,44 @@ def main():
     # Document input
     st.header("1️⃣ Input Document")
     
-    col1, col2 = st.columns([2, 1])
+    # Create tabs for different input methods
+    tab1, tab2 = st.tabs(["📄 Upload PDF", "📝 Paste Text"])
     
-    with col1:
-        document_text = st.text_area(
-            "Paste document text here",
-            height=200,
-            help="Paste the text content of your document"
+    document_text = ""
+    
+    with tab1:
+        st.markdown("**Upload a PDF file**")
+        uploaded_file = st.file_uploader("Choose a PDF file", type=['pdf'], key="pdf_upload")
+        
+        if uploaded_file:
+            try:
+                with st.spinner("Extracting text from PDF..."):
+                    document_text = extract_text_from_pdf(uploaded_file)
+                    st.success(f"✅ Extracted {len(document_text)} characters from PDF")
+                    
+                    # Show preview
+                    with st.expander("📖 Preview extracted text"):
+                        st.text(document_text[:1000] + "..." if len(document_text) > 1000 else document_text)
+            except Exception as e:
+                st.error(f"❌ {str(e)}")
+                st.info("💡 Try the 'Paste Text' tab instead")
+    
+    with tab2:
+        st.markdown("**Paste document text directly**")
+        pasted_text = st.text_area(
+            "Document text",
+            height=300,
+            help="Paste the text content of your document",
+            key="text_paste"
         )
+        if pasted_text:
+            document_text = pasted_text
+            st.info(f"📝 {len(document_text)} characters entered")
     
+    # Tips
+    col1, col2 = st.columns([2, 1])
     with col2:
-        st.markdown("**Tips for better results:**")
+        st.markdown("**💡 Tips for better results:**")
         st.markdown("- Use complete sections with context")
         st.markdown("- Include 500-5000 words")
         st.markdown("- Technical docs work best")
@@ -174,9 +214,9 @@ def main():
     with col1:
         if st.button("🚀 Generate Dataset", type="primary", disabled=not document_text or not api_key):
             if not api_key:
-                st.error("Please provide an Anthropic API key")
+                st.error("⚠️ Please provide an Anthropic API key in the sidebar")
             elif not document_text:
-                st.error("Please provide document text")
+                st.error("⚠️ Please upload a PDF or paste text")
             else:
                 generator = QAGenerator(api_key)
                 
@@ -190,11 +230,12 @@ def main():
                     if qa_pairs:
                         st.session_state.qa_pairs = qa_pairs
                         st.success(f"✅ Generated {len(qa_pairs)} Q&A pairs!")
+                        st.balloons()
                     else:
-                        st.error("Failed to generate Q&A pairs")
+                        st.error("❌ Failed to generate Q&A pairs")
     
     with col2:
-        if st.button("🔄 Generate More", disabled=not st.session_state.qa_pairs):
+        if st.button("🔄 Generate More", disabled=not st.session_state.qa_pairs or not document_text):
             if document_text and api_key:
                 generator = QAGenerator(api_key)
                 with st.spinner("Generating additional pairs..."):
@@ -244,12 +285,12 @@ def main():
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.caption(f"Difficulty: {pair.get('difficulty', 'N/A')}")
+                    st.caption(f"🎯 Difficulty: {pair.get('difficulty', 'N/A')}")
                 with col2:
-                    st.caption(f"Type: {pair.get('type', 'N/A')}")
+                    st.caption(f"📋 Type: {pair.get('type', 'N/A')}")
                 
                 if pair.get('relevant_context'):
-                    st.markdown("**Relevant Context:**")
+                    st.markdown("**📄 Relevant Context:**")
                     st.text(pair.get('relevant_context', '')[:300] + "...")
         
         # Export section
@@ -263,7 +304,8 @@ def main():
                 label="📥 Download JSON",
                 data=json_data,
                 file_name="qa_groundtruth.json",
-                mime="application/json"
+                mime="application/json",
+                help="Download as JSON for evaluation"
             )
         
         with col2:
@@ -272,7 +314,8 @@ def main():
                 label="📥 Download CSV",
                 data=csv_data,
                 file_name="qa_groundtruth.csv",
-                mime="text/csv"
+                mime="text/csv",
+                help="Download as CSV for spreadsheet analysis"
             )
 
 
