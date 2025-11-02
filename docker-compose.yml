@@ -1,22 +1,91 @@
 version: '3.8'
 
 services:
+  # Redis for caching (optional - only if you implement caching)
   redis:
     image: redis:7-alpine
+    container_name: rag-redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    profiles:
+      - with-redis  # Only start if explicitly requested
 
-  rag-simple:
+  # Build image once
+  rag-app:
     build: .
+    image: rag-app:latest  # Tag it for reuse
+    container_name: rag-builder
+    command: "true"  # Just build, don't run
+    profiles:
+      - build-only
+
+  # Simple RAG App
+  rag-simple:
+    image: rag-app:latest  # Reuse built image
+    build: .  # Fallback: build if image doesn't exist
+    container_name: rag-simple
     ports:
       - "8501:8501"
     env_file:
       - .env
-    depends_on:
-      - redis
     command: make run-simple
+    restart: unless-stopped
+
+  # Enhanced RAG App
+  rag-enhanced:
+    image: rag-app:latest
+    build: .
+    container_name: rag-enhanced
+    ports:
+      - "8502:8502"
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: make run-enhanced
+    restart: unless-stopped
+    profiles:
+      - enhanced
+
+  # Q&A Generator
+  qa-generator:
+    image: rag-app:latest
+    build: .
+    container_name: qa-generator
+    ports:
+      - "8504:8504"
+    env_file:
+      - .env
+    command: make run-generate
+    restart: unless-stopped
+    profiles:
+      - tools
+
+  # Evaluator
+  evaluator:
+    image: rag-app:latest
+    build: .
+    container_name: evaluator
+    ports:
+      - "8503:8503"
+    env_file:
+      - .env
+    command: make run-evaluate
+    restart: unless-stopped
+    profiles:
+      - tools
 
 volumes:
   redis_data:
+
+networks:
+  default:
+    name: rag-network
