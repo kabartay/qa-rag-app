@@ -1,56 +1,39 @@
 [project]
-name = "rag-evaluation-system"
+name = "qa-rag-app"
 version = "1.0.0"
-description = "Production-ready RAG system with automated evaluation for PDF documents"
+description = "RAG application with QA and automated evaluation for PDF documents"
 authors = [
-    {name = "Your Name", email = "your.email@example.com"}
+    {name = "Mukharbek Organokov", email = "mukharbek.organokov@gmail.com"}
 ]
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
 keywords = ["rag", "llm", "evaluation", "nlp", "vector-search"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 
 dependencies = [
-    # Core Framework
     "streamlit>=1.32.0",
-    
-    # LLM & AI Services
     "anthropic>=0.25.0",
     "cohere>=5.3.0",
     "pinecone>=5.0.0",
-    
-    # Better Embeddings
-    "voyageai>=0.2.0",
-    
-    # Document Processing
     "PyPDF2>=3.0.1",
     "pdfplumber>=0.10.4",
     "python-docx>=1.1.0",
     "beautifulsoup4>=4.12.3",
-    
-    # Text Processing
     "nltk>=3.8.1",
     "spacy>=3.7.4",
     "tiktoken>=0.6.0",
-    
-    # Utilities
     "python-dotenv>=1.0.1",
     "tenacity>=8.2.3",
     "tqdm>=4.66.2",
-    
-    # Data & Analysis
     "pandas>=2.2.1",
     "numpy>=1.26.4",
-    
-    # Monitoring
     "redis>=5.0.0",
 ]
 
@@ -71,27 +54,27 @@ monitoring = [
 ]
 
 all = [
-    "rag-evaluation-system[dev,monitoring]",
+    "qa-rag-app[dev,monitoring]",
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/rag-evaluation-system"
-Documentation = "https://github.com/yourusername/rag-evaluation-system#readme"
-Repository = "https://github.com/yourusername/rag-evaluation-system"
-Issues = "https://github.com/yourusername/rag-evaluation-system/issues"
+Homepage = "https://github.com/kabartay/qa-rag-app"
+Documentation = "https://github.com/kabartay/qa-rag-app#readme"
+Repository = "https://github.com/kabartay/qa-rag-app"
+Issues = "https://github.com/kabartay/qa-rag-app/issues"
 
 [project.scripts]
-rag-simple = "rag_system.simple:main"
-rag-enhanced = "rag_system.enhanced:main"
-rag-evaluate = "rag_system.evaluator:main"
-qa-generate = "rag_system.qa_generator:main"
+rag-simple = "apps.rag_app:main"
+rag-enhanced = "apps.rag_app_enhanced:main"
+rag-evaluate = "apps.rag_evaluator:main"
+qa-generator = "apps.qa_generator:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/rag_system"]
+packages = ["apps"]
 
 [tool.black]
 line-length = 100
@@ -150,14 +133,13 @@ module = [
     "anthropic.*",
     "pinecone.*",
     "cohere.*",
-    "voyageai.*",
     "streamlit.*",
 ]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "7.0"
-addopts = "-ra -q --strict-markers --cov=src/rag_system --cov-report=term-missing --cov-report=html"
+addopts = "-ra -q --strict-markers --cov=apps/ --cov-report=term-missing --cov-report=html"
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
 python_classes = ["Test*"]

@@ -1,4 +1,4 @@
-.PHONY: help install install-dev install-all setup run-simple run-enhanced run-evaluate run-generate test test-unit test-integration lint format type-check clean clean-all docker-build docker-run cost-estimate docs
+.PHONY: help install install-dev install-all setup run-simple run-enhanced run-evaluate run-generate test lint format type-check clean clean-all docker-build docker-run cost-estimate docs
 
 .DEFAULT_GOAL := help
 
@@ -94,10 +94,10 @@ run-generate: ## Run Q&A Groundtruth Generator
 
 run-all: ## Run all applications on different ports
 	@echo "$(GREEN)Starting all applications...$(NC)"
-	@echo "$(YELLOW)Simple RAG:      http://localhost:8501$(NC)"
-	@echo "$(YELLOW)Enhanced RAG:    http://localhost:8502$(NC)"
-	@echo "$(YELLOW)Evaluator:       http://localhost:8503$(NC)"
-	@echo "$(YELLOW)Q&A Generator:   http://localhost:8504$(NC)"
+	@echo "$(YELLOW)Simple RAG:      		http://localhost:8501$(NC)"
+	@echo "$(YELLOW)Enhanced RAG: 		    http://localhost:8502$(NC)"
+	@echo "$(YELLOW)Evaluator:       		http://localhost:8503$(NC)"
+	@echo "$(YELLOW)Q&A Generator:          http://localhost:8504$(NC)"
 	@trap 'kill 0' EXIT; \
 	. .venv/bin/activate && streamlit run apps/rag_app.py --server.port 8501 & \
 	. .venv/bin/activate && streamlit run apps/rag_app_enhanced.py --server.port 8502 & \
@@ -111,17 +111,9 @@ test: ## Run all tests
 	@echo "$(GREEN)Running tests...$(NC)"
 	@. .venv/bin/activate && pytest tests/ -v
 
-test-unit: ## Run unit tests only
-	@echo "$(GREEN)Running unit tests...$(NC)"
-	@. .venv/bin/activate && pytest tests/ -v -m "unit"
-
-test-integration: ## Run integration tests only
-	@echo "$(GREEN)Running integration tests...$(NC)"
-	@. .venv/bin/activate && pytest tests/ -v -m "integration"
-
 test-cov: ## Run tests with coverage report
 	@echo "$(GREEN)Running tests with coverage...$(NC)"
-	@. .venv/bin/activate && pytest tests/ -v --cov --cov-report=html
+	@. .venv/bin/activate && pytest tests/ -v --cov=apps --cov-report=html
 	@echo "$(GREEN)✓ Coverage report generated in htmlcov/index.html$(NC)"
 
 lint: ## Run linter (ruff)
@@ -152,10 +144,6 @@ download-models: ## Download NLP models
 	@. .venv/bin/activate && python -m nltk.downloader punkt averaged_perceptron_tagger
 	@echo "$(GREEN)✓ Models downloaded!$(NC)"
 
-pinecone-init: ## Initialize Pinecone index
-	@echo "$(GREEN)Initializing Pinecone index...$(NC)"
-	@. .venv/bin/activate && python scripts/init_pinecone.py
-
 redis-start: ## Start Redis with Docker
 	@echo "$(GREEN)Starting Redis...$(NC)"
 	docker run -d -p 6379:6379 --name rag-redis redis:7-alpine
@@ -181,13 +169,13 @@ docs-serve: ## Serve documentation locally
 
 docker-build: ## Build Docker image
 	@echo "$(GREEN)Building Docker image...$(NC)"
-	docker build -t rag-evaluation-system:latest .
+	docker build -t qa-rag-app:latest .
 
 docker-run: ## Run application in Docker
 	@echo "$(GREEN)Running application in Docker...$(NC)"
 	docker run -p 8501:8501 -p 8502:8502 \
 		--env-file .env \
-		rag-evaluation-system:latest
+		qa-rag-app:latest
 
 docker-compose-up: ## Start all services with docker-compose
 	@echo "$(GREEN)Starting services with docker-compose...$(NC)"
@@ -217,16 +205,6 @@ clean-all: clean ## Clean everything including virtual environment
 	rm -rf build/
 	@echo "$(GREEN)✓ Deep clean complete!$(NC)"
 	@echo "$(YELLOW)Run 'make install' to recreate environment$(NC)"
-
-##@ Quick Commands
-
-demo: install run-simple ## Quick demo - install and run simple RAG
-
-prod: install-all run-enhanced ## Production setup - full install and run enhanced RAG
-
-dev: install-dev format lint test ## Development setup - install, format, lint, test
-
-ci: lint type-check test-cov ## CI pipeline - all checks with coverage
 
 ##@ Information
 
