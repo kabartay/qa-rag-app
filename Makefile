@@ -118,12 +118,12 @@ test-cov: ## Run tests with coverage report
 
 lint: ## Run linter (ruff)
 	@echo "$(GREEN)Running linter...$(NC)"
-	@. .venv/bin/activate && ruff check src/ tests/ apps/
+	@. .venv/bin/activate && ruff check tests/ apps/
 
 format: ## Format code with black
 	@echo "$(GREEN)Formatting code...$(NC)"
-	@. .venv/bin/activate && black src/ tests/ apps/
-	@. .venv/bin/activate && ruff check --fix src/ tests/ apps/
+	@. .venv/bin/activate && black tests/ apps/
+	@. .venv/bin/activate && ruff check --fix tests/ apps/
 
 type-check: ## Run type checker (mypy)
 	@echo "$(GREEN)Running type checker...$(NC)"
