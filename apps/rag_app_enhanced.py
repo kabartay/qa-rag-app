@@ -103,34 +103,36 @@ class EnhancedRAG:
         
         return chunks
     
-    def _get_embeddings_voyage(self, texts: List[str]) -> List[List[float]]:
+    def _get_embeddings_cohere(self, texts: List[str]) -> List[List[float]]:
         """
-        Get embeddings using Voyage AI (via Anthropic)
-        Alternative: Use OpenAI embeddings or Cohere embeddings
+        Get embeddings using Cohere (you already have the API key!)
+        Cohere provides both embeddings AND re-ranking
         """
         try:
-            # Using Anthropic's message API as a workaround for embeddings
-            # In production, use dedicated embedding API:
-            # from voyageai import Client
-            # voyage_client = Client(api_key=voyage_key)
-            # embeddings = voyage_client.embed(texts, model="voyage-2")
+            # Use Cohere for embeddings (model: embed-english-v3.0 or embed-multilingual-v3.0)
+            response = self.cohere_client.embed(
+                texts=texts,
+                model='embed-multilingual-v3.0',  # Good for French documents
+                input_type='search_document',
+                embedding_types=['float']
+            )
             
-            # For this demo, we'll simulate embeddings
-            # IMPORTANT: Replace with actual embedding API in production
-            import random
-            embeddings = []
-            for text in texts:
-                # Create deterministic "embedding" based on text hash
-                text_hash = hashlib.md5(text.encode()).hexdigest()
-                random.seed(text_hash)
-                embedding = [random.random() for _ in range(self.embedding_dimension)]
-                embeddings.append(embedding)
+            embeddings = response.embeddings.float
             
+            # Cohere embeddings are 1024-dimensional, perfect for our setup
             return embeddings
             
         except Exception as e:
             st.error(f"Embedding error: {str(e)}")
-            return [[0.0] * self.embedding_dimension for _ in texts]
+            # Fallback to mock embeddings if Cohere fails
+            import random
+            embeddings = []
+            for text in texts:
+                text_hash = hashlib.md5(text.encode()).hexdigest()
+                random.seed(text_hash)
+                embedding = [random.random() for _ in range(self.embedding_dimension)]
+                embeddings.append(embedding)
+            return embeddings
     
     def load_document(self, text: str, doc_name: str = "document"):
         """Load document into vector database"""
@@ -143,11 +145,11 @@ class EnhancedRAG:
             st.error("Pinecone index not available")
             return False
         
-        # Generate embeddings
+        # Generate embeddings using Cohere
         chunk_texts = [chunk['text'] for chunk in self.chunks]
         
-        with st.spinner("Generating embeddings..."):
-            embeddings = self._get_embeddings_voyage(chunk_texts)
+        with st.spinner("Generating embeddings with Cohere..."):
+            embeddings = self._get_embeddings_cohere(chunk_texts)
         
         # Prepare vectors for Pinecone
         vectors = []
@@ -182,7 +184,7 @@ class EnhancedRAG:
         """
         
         # Stage 1: Vector search in Pinecone
-        query_embedding = self._get_embeddings_voyage([query])[0]
+        query_embedding = self._get_embeddings_cohere([query])[0]
         
         results = self.index.query(
             vector=query_embedding,
@@ -334,7 +336,7 @@ def main():
         st.markdown("""
         **Pipeline:**
         1. 📄 Chunk documents (800 words, 100 overlap)
-        2. 🧮 Generate embeddings (Voyage AI)
+        2. 🧮 Generate embeddings (Cohere)
         3. 💾 Store in Pinecone (cosine similarity)
         4. 🔍 Query: Vector search (top-20)
         5. 🎯 Cohere re-rank (top-5)
@@ -347,6 +349,7 @@ def main():
         st.markdown("✅ Multi-document search")
         st.markdown("✅ Better precision with re-ranking")
         st.markdown("✅ Scalable to millions of chunks")
+        st.markdown("✅ Uses Cohere for embeddings + reranking")
     
     # Initialize RAG
     if 'enhanced_rag' not in st.session_state:

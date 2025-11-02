@@ -25,7 +25,7 @@ dependencies = [
     # LLM & AI Services
     "anthropic>=0.25.0",
     "cohere>=5.3.0",
-    "pinecone-client>=3.2.2",
+    "pinecone>=5.0.0",
     
     # Better Embeddings
     "voyageai>=0.2.0",
