@@ -30,7 +30,6 @@ htmlcov/
 .github/
 
 # Documentation
-README.md
 docs/
 
 # Environment (use docker-compose env instead)
