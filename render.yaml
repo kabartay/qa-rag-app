@@ -19,8 +19,8 @@ services:
         value: true
       - key: REDIS_URL
         fromService:
-          name: qa-rag-cache
           type: redis
+          name: qa-rag-cache
           property: connectionString
       - key: ANTHROPIC_API_KEY
         sync: false
@@ -45,18 +45,16 @@ services:
     plan: free
     region: virginia
     envVars:
+      - key: APP_PATH
+        value: apps/rag_app_enhanced.py
       - key: PORT
         value: 8502
-      - key: PROMETHEUS_PORT
-        value: 9100
-      - key: ENABLE_PROMETHEUS
-        value: true
       - key: USE_CACHE
         value: true
       - key: REDIS_URL
         fromService:
-          name: qa-rag-cache
           type: redis
+          name: qa-rag-cache
           property: connectionString
       - key: ANTHROPIC_API_KEY
         sync: false
@@ -72,7 +70,7 @@ services:
         value: true
       - key: LANGSMITH_ENDPOINT
         value: https://api.smith.langchain.com
-    dockerCommand: streamlit run apps/rag_app_enhanced.py --server.port=$PORT --server.address=0.0.0.0
+    dockerCommand: streamlit run $APP_PATH --server.port=$PORT --server.address=0.0.0.0
 
   # RAG Evaluator
   - type: web
@@ -81,18 +79,16 @@ services:
     plan: free
     region: virginia
     envVars:
+      - key: APP_PATH
+        value: apps/rag_evaluator.py
       - key: PORT
         value: 8503
-      - key: PROMETHEUS_PORT
-        value: 9100
-      - key: ENABLE_PROMETHEUS
-        value: true
       - key: USE_CACHE
         value: true
       - key: REDIS_URL
         fromService:
-          name: qa-rag-cache
           type: redis
+          name: qa-rag-cache
           property: connectionString
       - key: ANTHROPIC_API_KEY
         sync: false
@@ -104,7 +100,7 @@ services:
         value: true
       - key: LANGSMITH_ENDPOINT
         value: https://api.smith.langchain.com
-    dockerCommand: streamlit run apps/rag_evaluator.py --server.port=$PORT --server.address=0.0.0.0
+    dockerCommand: streamlit run $APP_PATH --server.port=$PORT --server.address=0.0.0.0
 
   # Q&A Generator
   - type: web
@@ -123,8 +119,8 @@ services:
         value: true
       - key: REDIS_URL
         fromService:
-          name: qa-rag-cache
           type: redis
+          name: qa-rag-cache
           property: connectionString
       - key: ANTHROPIC_API_KEY
         sync: false
@@ -143,4 +139,4 @@ services:
     name: qa-rag-cache
     plan: free
     region: virginia
-    ipAllowList: [] # Allow all internal Render services
+    ipAllowList: []  # Allow all internal Render services

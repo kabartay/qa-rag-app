@@ -52,4 +52,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 
 # ---------- Entrypoint ----------
 # No venv needed inside container (uv installed system-wide)
-CMD ["streamlit", "run", "apps/rag_app_enhanced.py", "--server.headless=true", "--server.port=8501", "--server.address=0.0.0.0"]
+# CMD ["streamlit", "run", "apps/rag_app_enhanced.py", "--server.headless=true", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["bash", "-c", "streamlit run ${APP_PATH:-apps/rag_app_enhanced.py} --server.port=${PORT:-8501} --server.address=0.0.0.0"]
