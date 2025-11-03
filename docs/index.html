@@ -509,12 +509,12 @@
 
                 <div class="component">
                     <div class="component-title">🎯 qa_generator.py</div>
-                    <div class="component-desc">Auto-generate groundtruth datasets</div>
+                    <div class="component-desc">Generate evaluation datasets (50-100 Q&A pairs, 5 types)</div>
                 </div>
 
                 <div class="component">
                     <div class="component-title">📊 rag_evaluator.py</div>
-                    <div class="component-desc">4-metric evaluation framework</div>
+                    <div class="component-desc">4-metric evaluation: faithfulness, relevancy, context, correctness</div>
                 </div>
 
                 <div class="component">
@@ -582,6 +582,12 @@
                         <td><span class="checkmark">✓</span> Free from cache</td>
                     </tr>
                     <tr>
+                        <td>Evaluation Support</td>
+                        <td><span class="checkmark">✓</span> Yes</td>
+                        <td><span class="checkmark">✓</span> Yes</td>
+                        <td><span class="checkmark">✓</span> Yes</td>
+                    </tr>
+                    <tr>
                         <td>Best for</td>
                         <td>Prototypes</td>
                         <td>Production</td>
@@ -591,8 +597,115 @@
             </table>
         </div>
 
-        <!-- Deployment -->
+        <!-- Evaluation Pipeline -->
         <div class="deployment-section">
+            <h2>📊 Evaluation Pipeline</h2>
+            <p style="color: #666; margin-bottom: 30px;">Automated groundtruth generation and 4-metric evaluation system
+            </p>
+
+            <div class="deploy-grid">
+                <div class="deploy-card">
+                    <h3>1️⃣ Q&A Generator</h3>
+                    <p style="margin-bottom: 15px; font-size: 0.95em;">qa_generator.py</p>
+                    <ul>
+                        <li>Auto-generate Q&A pairs</li>
+                        <li>5 question types (factual, conceptual, multi-hop)</li>
+                        <li>Difficulty levels (easy, medium, hard)</li>
+                        <li>Export to JSON</li>
+                        <li>Claude-powered generation</li>
+                    </ul>
+                </div>
+
+                <div class="deploy-card">
+                    <h3>2️⃣ RAG System</h3>
+                    <p style="margin-bottom: 15px; font-size: 0.95em;">Run on test dataset</p>
+                    <ul>
+                        <li>Load evaluation dataset</li>
+                        <li>Process each question</li>
+                        <li>Collect RAG responses</li>
+                        <li>Measure retrieval quality</li>
+                        <li>Track latency & costs</li>
+                    </ul>
+                </div>
+
+                <div class="deploy-card">
+                    <h3>3️⃣ Evaluator</h3>
+                    <p style="margin-bottom: 15px; font-size: 0.95em;">rag_evaluator.py</p>
+                    <ul>
+                        <li>4-metric evaluation</li>
+                        <li>LLM-as-judge scoring</li>
+                        <li>Detailed breakdowns</li>
+                        <li>Comparative analysis</li>
+                        <li>Export results</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 30px; color: #667eea; margin-bottom: 20px;">Evaluation Metrics</h3>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value">⭐</div>
+                    <div class="metric-label">Faithfulness</div>
+                    <p style="font-size: 0.85em; margin-top: 10px;">Answer supported by retrieved context</p>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">🎯</div>
+                    <div class="metric-label">Answer Relevancy</div>
+                    <p style="font-size: 0.85em; margin-top: 10px;">Directly addresses the question</p>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">📚</div>
+                    <div class="metric-label">Context Relevancy</div>
+                    <p style="font-size: 0.85em; margin-top: 10px;">Retrieval quality (right chunks)</p>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">✓</div>
+                    <div class="metric-label">Correctness</div>
+                    <p style="font-size: 0.85em; margin-top: 10px;">Matches ground truth answer</p>
+                </div>
+            </div>
+
+            <div style="background: #f8f9fa; border-radius: 15px; padding: 25px; margin-top: 30px;">
+                <h4 style="color: #667eea; margin-bottom: 15px;">Evaluation Workflow</h4>
+                <div
+                    style="display: flex; align-items: center; justify-content: space-around; flex-wrap: wrap; gap: 20px;">
+                    <div style="text-align: center;">
+                        <div
+                            style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2em; margin: 0 auto 10px;">
+                            📝</div>
+                        <strong>Generate</strong>
+                        <p style="font-size: 0.85em; color: #666;">50-100 Q&A pairs</p>
+                    </div>
+                    <div style="font-size: 2em; color: #667eea;">→</div>
+                    <div style="text-align: center;">
+                        <div
+                            style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2em; margin: 0 auto 10px;">
+                            🤖</div>
+                        <strong>Run RAG</strong>
+                        <p style="font-size: 0.85em; color: #666;">Test both systems</p>
+                    </div>
+                    <div style="font-size: 2em; color: #667eea;">→</div>
+                    <div style="text-align: center;">
+                        <div
+                            style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2em; margin: 0 auto 10px;">
+                            📊</div>
+                        <strong>Evaluate</strong>
+                        <p style="font-size: 0.85em; color: #666;">4-metric scoring</p>
+                    </div>
+                    <div style="font-size: 2em; color: #667eea;">→</div>
+                    <div style="text-align: center;">
+                        <div
+                            style="background: linear-gradient(135deg, #28a745, #20c997); color: white; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2em; margin: 0 auto 10px;">
+                            ✓</div>
+                        <strong>Improve</strong>
+                        <p style="font-size: 0.85em; color: #666;">Iterate on weak areas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deployment -->
+        <div class="deployment-section" style="margin-top: 30px;">
             <h2>🌐 Production Deployment</h2>
 
             <div class="deploy-grid">
