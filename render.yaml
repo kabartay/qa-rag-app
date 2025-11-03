@@ -12,6 +12,7 @@ services:
       - key: REDIS_URL
         fromService:
           name: qa-rag-cache
+          type: redis
           property: connectionString
       - key: ANTHROPIC_API_KEY
         sync: false
@@ -39,6 +40,7 @@ services:
       - key: REDIS_URL
         fromService:
           name: qa-rag-cache
+          type: redis
           property: connectionString
       - key: ANTHROPIC_API_KEY
         sync: false
@@ -66,6 +68,7 @@ services:
       - key: REDIS_URL
         fromService:
           name: qa-rag-cache
+          type: redis
           property: connectionString
       - key: ANTHROPIC_API_KEY
         sync: false
@@ -89,6 +92,7 @@ services:
       - key: REDIS_URL
         fromService:
           name: qa-rag-cache
+          type: redis
           property: connectionString
       - key: ANTHROPIC_API_KEY
         sync: false
@@ -106,4 +110,4 @@ services:
     name: qa-rag-cache
     plan: free
     region: virginia
-    ipAllowList: [] # Empty list means allow all Render services in the same network
+    ipAllowList: [] # Allow all internal Render services
