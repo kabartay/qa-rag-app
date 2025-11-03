@@ -1,12 +1,15 @@
 # Deploys Simple RAG, Enhanced RAG, Evaluator, and Q&A Generator with shared Redis cache
 
 services:
+  # Simple RAG
   - type: web
     name: qa-rag-simple
     env: docker
     plan: free
     region: virginia
     envVars:
+      - key: PORT
+        value: 8501
       - key: USE_CACHE
         value: true
       - key: REDIS_URL
@@ -28,13 +31,17 @@ services:
         value: true
       - key: LANGSMITH_ENDPOINT
         value: https://api.smith.langchain.com
+    dockerCommand: streamlit run apps/rag_app.py --server.port=$PORT --server.address=0.0.0.0
 
+  # Enhanced RAG
   - type: web
     name: qa-rag-enhanced
     env: docker
     plan: free
     region: virginia
     envVars:
+      - key: PORT
+        value: 8502
       - key: USE_CACHE
         value: true
       - key: REDIS_URL
@@ -56,13 +63,17 @@ services:
         value: true
       - key: LANGSMITH_ENDPOINT
         value: https://api.smith.langchain.com
+    dockerCommand: streamlit run apps/rag_app_enhanced.py --server.port=$PORT --server.address=0.0.0.0
 
+  # RAG Evaluator
   - type: web
     name: qa-rag-evaluator
     env: docker
     plan: free
     region: virginia
     envVars:
+      - key: PORT
+        value: 8503
       - key: USE_CACHE
         value: true
       - key: REDIS_URL
@@ -80,13 +91,17 @@ services:
         value: true
       - key: LANGSMITH_ENDPOINT
         value: https://api.smith.langchain.com
+    dockerCommand: streamlit run apps/rag_evaluator.py --server.port=$PORT --server.address=0.0.0.0
 
+  # Q&A Generator
   - type: web
     name: qa-generator
     env: docker
     plan: free
     region: virginia
     envVars:
+      - key: PORT
+        value: 8504
       - key: USE_CACHE
         value: true
       - key: REDIS_URL
@@ -104,6 +119,7 @@ services:
         value: true
       - key: LANGSMITH_ENDPOINT
         value: https://api.smith.langchain.com
+    dockerCommand: streamlit run apps/qa_generator.py --server.port=$PORT --server.address=0.0.0.0
 
   # Shared Redis Cache
   - type: redis
