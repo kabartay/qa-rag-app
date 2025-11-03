@@ -1,4 +1,4 @@
-# Deploys all RAG components (Simple, Enhanced, Evaluator, QA Generator) + shared Redis cache
+# Deploys Simple RAG, Enhanced RAG, Evaluator, and QA Generator + shared Redis cache
 
 services:
   - type: web
@@ -13,15 +13,13 @@ services:
       - key: REDIS_URL
         fromService:
           name: qa-rag-cache
-          type: key-value
+          type: redis
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: COHERE_API_KEY
         sync: false
       - key: PINECONE_API_KEY
         sync: false
-      - key: PINECONE_INDEX_NAME
-        value: qa-rag-app
       - key: LANGSMITH_API_KEY
         sync: false
       - key: LANGSMITH_PROJECT
@@ -43,15 +41,13 @@ services:
       - key: REDIS_URL
         fromService:
           name: qa-rag-cache
-          type: key-value
+          type: redis
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: COHERE_API_KEY
         sync: false
       - key: PINECONE_API_KEY
         sync: false
-      - key: PINECONE_INDEX_NAME
-        value: qa-rag-app
       - key: LANGSMITH_API_KEY
         sync: false
       - key: LANGSMITH_PROJECT
@@ -73,7 +69,7 @@ services:
       - key: REDIS_URL
         fromService:
           name: qa-rag-cache
-          type: key-value
+          type: redis
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: LANGSMITH_API_KEY
@@ -97,7 +93,7 @@ services:
       - key: REDIS_URL
         fromService:
           name: qa-rag-cache
-          type: key-value
+          type: redis
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: LANGSMITH_API_KEY
@@ -110,6 +106,6 @@ services:
         value: https://api.smith.langchain.com
 
   # Redis Cache (shared)
-  - type: key-value
+  - type: redis
     name: qa-rag-cache
     plan: free
