@@ -23,9 +23,7 @@ A **RAG evaluation system** with two architectures + optional Redis caching.
 - ✅ Environment variables configured
 - ✅ Scalable infrastructure
 
-View our interactive architecture visualization: [Live Demo](https://yourusername.github.io/qa-rag-app/)
-
-![Architecture Preview](screenshot.png)
+View our interactive architecture visualization: [Live Demo](https://qa-rag-app-1.onrender.com)
 
 ---
 

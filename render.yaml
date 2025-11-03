@@ -1,4 +1,4 @@
-# Deploys Simple RAG, Enhanced RAG, Evaluator, and Q&A Generator with shared Redis cache
+# Deploys Simple RAG, Enhanced RAG, Evaluator, Q&A Generator, and Docs with shared Redis cache
 # Each exposes Prometheus metrics on port 9100 for internal monitoring
 
 services:
@@ -33,7 +33,7 @@ services:
       - key: LANGSMITH_PROJECT
         value: qa-rag-app
       - key: LANGSMITH_TRACING
-        value: true
+        value: "true"
       - key: LANGSMITH_ENDPOINT
         value: https://api.smith.langchain.com
     dockerCommand: streamlit run apps/rag_app.py --server.port=$PORT --server.address=0.0.0.0
@@ -67,7 +67,7 @@ services:
       - key: LANGSMITH_PROJECT
         value: qa-rag-app
       - key: LANGSMITH_TRACING
-        value: true
+        value: "true"
       - key: LANGSMITH_ENDPOINT
         value: https://api.smith.langchain.com
     dockerCommand: streamlit run $APP_PATH --server.port=$PORT --server.address=0.0.0.0
@@ -92,12 +92,16 @@ services:
           property: connectionString
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: COHERE_API_KEY
+        sync: false
+      - key: PINECONE_API_KEY
+        sync: false
       - key: LANGSMITH_API_KEY
         sync: false
       - key: LANGSMITH_PROJECT
         value: qa-rag-app
       - key: LANGSMITH_TRACING
-        value: true
+        value: "true"
       - key: LANGSMITH_ENDPOINT
         value: https://api.smith.langchain.com
     dockerCommand: streamlit run $APP_PATH --server.port=$PORT --server.address=0.0.0.0
@@ -129,10 +133,23 @@ services:
       - key: LANGSMITH_PROJECT
         value: qa-rag-app
       - key: LANGSMITH_TRACING
-        value: true
+        value: "true"
       - key: LANGSMITH_ENDPOINT
         value: https://api.smith.langchain.com
     dockerCommand: streamlit run apps/qa_generator.py --server.port=$PORT --server.address=0.0.0.0
+
+  # Documentation Viewer (README)
+  - type: web
+    name: qa-rag-docs
+    env: docker
+    plan: free
+    region: virginia
+    envVars:
+      - key: APP_PATH
+        value: apps/readme_viewer.py
+      - key: PORT
+        value: 8505
+    dockerCommand: streamlit run $APP_PATH --server.port=$PORT --server.address=0.0.0.0
 
   # Shared Redis Cache
   - type: redis
