@@ -17,6 +17,8 @@ import streamlit as st
 from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
 
+from apps.monitoring import get_monitoring_status, log_cache_event, traced
+
 # Load environment variables
 load_dotenv()
 
@@ -132,6 +134,7 @@ class EnhancedRAG:
                 embeddings.append(embedding)
             return embeddings
 
+    @traced
     def load_document(self, text: str, doc_name: str = "document") -> bool:
         """Load document into vector database"""
         self.chunks = self._chunk_text_smart(text)
@@ -170,6 +173,7 @@ class EnhancedRAG:
         st.success(f"Loaded {len(vectors)} chunks to Pinecone")
         return True
 
+    @traced
     def retrieve_and_rerank(
         self, query: str, top_k: int = 20, rerank_top_n: int = 5
     ) -> list[dict[str, Any]]:
@@ -217,6 +221,7 @@ class EnhancedRAG:
             st.warning(f"Rerank failed: {str(e)}, using vector search only")
             return candidates[:rerank_top_n]
 
+    @traced
     def answer_question(self, question: str) -> dict[str, Any]:
         """Answer question using enhanced RAG pipeline"""
         relevant_chunks = self.retrieve_and_rerank(question, top_k=20, rerank_top_n=5)
@@ -435,6 +440,20 @@ def main() -> None:
         # Show cache in the sidebar (only for demo)
         render_cache_sidebar(st.session_state.cache)
 
+        # Monitoring status (only for demo)
+        st.sidebar.markdown("### Monitoring Status")
+        status = get_monitoring_status()
+
+        if status["langsmith_enabled"]:
+            st.sidebar.success(f"LangSmith ({status['project']})")
+        else:
+            st.sidebar.warning("LangSmith disabled")
+
+        if status["prometheus_enabled"]:
+            st.sidebar.info(f"Prometheus active on port {status['prometheus_port']}")
+        else:
+            st.sidebar.warning("Prometheus not running")
+
     # Sidebar configuration
     with st.sidebar:
         st.header("API Keys")
@@ -641,9 +660,10 @@ def main() -> None:
 
             # Check if cached
             cached = cache.get(question, doc_name)
+            log_cache_event(hit=bool(cached))  # monitoring
             if cached:
                 result = cached
-                st.toast("⚡ Cached result used!", icon="⚡")
+                st.toast("Cached result used!", icon="⚡")
             else:
                 with st.spinner("Searching and analyzing..."):
                     result = st.session_state.enhanced_rag.answer_question(question)
