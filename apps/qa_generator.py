@@ -3,9 +3,16 @@ Groundtruth Q&A Pair Generator with PDF Upload Support.
 Automatically generates question-answer pairs from documents for evaluation.
 """
 
+# noqa: E402
+import os
+import sys
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 import csv
 import json
-import os
 from io import BytesIO, StringIO
 from typing import Any, cast
 

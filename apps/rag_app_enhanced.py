@@ -4,9 +4,16 @@ Handles large documents and multi-document collections.
 Added Redis caching to reduce cost.
 """
 
+# noqa: E402
+import os
+import sys
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 import hashlib
 import json
-import os
 import random
 import time
 from typing import Any, cast
@@ -15,7 +22,7 @@ import anthropic
 import cohere
 import streamlit as st
 from dotenv import load_dotenv
-from pinecone import Pinecone, ServerlessSpec
+from pinecone import Pinecone
 
 from apps.monitoring import get_monitoring_status, log_cache_event, traced
 
@@ -54,7 +61,8 @@ class EnhancedRAG:
                     name=self.index_name,
                     dimension=self.embedding_dimension,
                     metric="cosine",
-                    spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+                    cloud="aws",
+                    region="us-east-1",
                 )
                 time.sleep(1)
 
