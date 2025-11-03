@@ -1,0 +1,115 @@
+# Deploys all RAG components (Simple, Enhanced, Evaluator, QA Generator) + shared Redis cache
+
+services:
+  - type: web
+    name: qa-rag-simple
+    env: docker
+    plan: free
+    region: virginia
+    startCommand: streamlit run apps/rag_app.py --server.port=8501
+    envVars:
+      - key: USE_CACHE
+        value: true
+      - key: REDIS_URL
+        fromService:
+          name: qa-rag-cache
+          type: key-value
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: COHERE_API_KEY
+        sync: false
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_INDEX_NAME
+        value: qa-rag-app
+      - key: LANGSMITH_API_KEY
+        sync: false
+      - key: LANGSMITH_PROJECT
+        value: qa-rag-app
+      - key: LANGSMITH_TRACING
+        value: true
+      - key: LANGSMITH_ENDPOINT
+        value: https://api.smith.langchain.com
+
+  - type: web
+    name: qa-rag-enhanced
+    env: docker
+    plan: free
+    region: virginia
+    startCommand: streamlit run apps/rag_app_enhanced.py --server.port=8502
+    envVars:
+      - key: USE_CACHE
+        value: true
+      - key: REDIS_URL
+        fromService:
+          name: qa-rag-cache
+          type: key-value
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: COHERE_API_KEY
+        sync: false
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_INDEX_NAME
+        value: qa-rag-app
+      - key: LANGSMITH_API_KEY
+        sync: false
+      - key: LANGSMITH_PROJECT
+        value: qa-rag-app
+      - key: LANGSMITH_TRACING
+        value: true
+      - key: LANGSMITH_ENDPOINT
+        value: https://api.smith.langchain.com
+
+  - type: web
+    name: qa-rag-evaluator
+    env: docker
+    plan: free
+    region: virginia
+    startCommand: streamlit run apps/rag_evaluator.py --server.port=8503
+    envVars:
+      - key: USE_CACHE
+        value: true
+      - key: REDIS_URL
+        fromService:
+          name: qa-rag-cache
+          type: key-value
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: LANGSMITH_API_KEY
+        sync: false
+      - key: LANGSMITH_PROJECT
+        value: qa-rag-app
+      - key: LANGSMITH_TRACING
+        value: true
+      - key: LANGSMITH_ENDPOINT
+        value: https://api.smith.langchain.com
+
+  - type: web
+    name: qa-generator
+    env: docker
+    plan: free
+    region: virginia
+    startCommand: streamlit run apps/qa_generator.py --server.port=8504
+    envVars:
+      - key: USE_CACHE
+        value: true
+      - key: REDIS_URL
+        fromService:
+          name: qa-rag-cache
+          type: key-value
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: LANGSMITH_API_KEY
+        sync: false
+      - key: LANGSMITH_PROJECT
+        value: qa-rag-app
+      - key: LANGSMITH_TRACING
+        value: true
+      - key: LANGSMITH_ENDPOINT
+        value: https://api.smith.langchain.com
+
+  # Redis Cache (shared)
+  - type: key-value
+    name: qa-rag-cache
+    plan: free
