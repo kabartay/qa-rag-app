@@ -40,8 +40,6 @@ qa-rag-app/
 ├── scripts/
 │   └── cost_calculator.py         # Functional cost calculator
 │
-├── production_enhancements.py     # Reference utilities
-│
 ├── .env                           # API keys (auto-loaded)
 ├── .gitignore                     # Ignore files
 ├── Dockerfile                     # Docker file for Render deployment

@@ -21,9 +21,8 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # ---------- Copy project files ----------
-COPY pyproject.toml Makefile ./
+COPY pyproject.toml Makefile README.md ./
 COPY apps/ apps/
-COPY production_enhancements.py ./
 
 # ---------- Install uv and dependencies ----------
 RUN pip install --no-cache-dir uv
