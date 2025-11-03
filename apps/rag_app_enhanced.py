@@ -22,6 +22,8 @@ from apps.monitoring import get_monitoring_status, log_cache_event, traced
 # Load environment variables
 load_dotenv()
 
+MODEL = "claude-sonnet-4-5-20250929"  # "claude-sonnet-4-20250514"
+
 
 class EnhancedRAG:
     """RAG with vector search and re-ranking"""
@@ -259,11 +261,21 @@ Instructions:
 Answer:"""
 
         try:
+            start_time = time.time()
             message = self.anthropic_client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model=MODEL,
                 max_tokens=2048,
                 messages=[{"role": "user", "content": prompt}],
             )
+            elapsed = time.time() - start_time
+
+            usage = getattr(message, "usage", None) or {}
+            input_tokens = getattr(usage, "input_tokens", 0) or usage.get("input_tokens", 0)
+            output_tokens = getattr(usage, "output_tokens", 0) or usage.get("output_tokens", 0)
+            total_tokens = input_tokens + output_tokens
+
+            # Approximate cost
+            cost_usd = (input_tokens / 1e6 * 3.0) + (output_tokens / 1e6 * 15.0)
 
             answer = message.content[0].text
 
@@ -278,6 +290,11 @@ Answer:"""
                     }
                     for c in relevant_chunks
                 ],
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "total_tokens": total_tokens,
+                "cost_usd": cost_usd,
+                "latency_seconds": elapsed,
             }
 
         except Exception as e:
@@ -286,6 +303,10 @@ Answer:"""
                 "context_used": context,
                 "chunks_used": len(relevant_chunks),
                 "scores": [],
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+                "cost_usd": 0.0,
             }
 
 
@@ -703,6 +724,8 @@ def main() -> None:
                         "chunks_used": result["chunks_used"],
                         "scores": result.get("scores", []),
                         "context": result["context_used"],
+                        "tokens": result.get("tokens", 0),
+                        "cost_usd": result.get("cost_usd", 0.0),
                     },
                 }
             )
@@ -740,6 +763,17 @@ def main() -> None:
 
         with col4:
             st.metric("Vector DB", "Pinecone")
+
+        # Cost Tracking (Claude + other model usage)
+        if st.session_state.messages:
+            total_cost = sum(
+                m.get("metadata", {}).get("cost_usd", 0)
+                for m in st.session_state.messages
+                if "metadata" in m
+            )
+            st.sidebar.markdown("---")
+            st.sidebar.header("Usage & Cost")
+            st.sidebar.metric("Total LLM Cost", f"${total_cost:.4f}")
 
 
 if __name__ == "__main__":

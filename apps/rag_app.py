@@ -16,6 +16,8 @@ load_dotenv()
 # RAG Application
 st.set_page_config(page_title="Simple RAG System", page_icon="🔹", layout="wide")
 
+MODEL = "claude-sonnet-4-5-20250929"  # "claude-sonnet-4-20250514"
+
 
 class SimpleRAG:
     """Simple RAG implementation using Claude's long context"""
@@ -67,7 +69,7 @@ Answer in the same language as the question (French or English)."""
         # Call Claude API
         try:
             message = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model=MODEL,
                 max_tokens=2048,
                 messages=[{"role": "user", "content": prompt}],
             )

@@ -17,6 +17,8 @@ from streamlit.runtime.uploaded_file_manager import UploadedFile
 # Load environment variables
 load_dotenv()
 
+MODEL = "claude-sonnet-4-5-20250929"  # "claude-sonnet-4-20250514"
+
 
 class QAGenerator:
     """Generates diverse, high-quality Q&A pairs from documents"""
@@ -65,7 +67,7 @@ Generate exactly {num_pairs} Q&A pairs."""
 
         try:
             message = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model=MODEL,
                 max_tokens=4096,
                 messages=[{"role": "user", "content": prompt}],
             )

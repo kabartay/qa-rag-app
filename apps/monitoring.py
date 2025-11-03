@@ -59,8 +59,9 @@ PROM_ENABLED = os.getenv("ENABLE_PROMETHEUS", "true").lower() in ("true", "1", "
 
 if PROM_ENABLED and start_http_server:
     try:
-        start_http_server(PROM_PORT)
-        logging.info(f"Prometheus metrics exporter started on port {PROM_PORT}")
+        bind_addr = os.getenv("PROMETHEUS_BIND_ADDR", "127.0.0.1")
+        start_http_server(PROM_PORT, addr=bind_addr)
+        logging.info(f"Prometheus metrics exporter started on {bind_addr}:{PROM_PORT}")
     except OSError:
         logging.warning("Prometheus metrics server already running or failed to start")
 
