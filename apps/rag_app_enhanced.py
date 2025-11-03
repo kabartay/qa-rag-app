@@ -16,7 +16,8 @@ import anthropic
 import cohere
 import streamlit as st
 from dotenv import load_dotenv
-from pinecone import Pinecone, ServerlessSpec
+from pinecone import Pinecone
+from pinecone.config import ServerlessSpec
 
 from apps.monitoring import get_monitoring_status, log_cache_event, traced
 
