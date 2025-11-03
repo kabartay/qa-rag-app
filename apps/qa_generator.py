@@ -6,6 +6,7 @@ Automatically generates question-answer pairs from documents for evaluation.
 import csv
 import json
 import os
+import sys
 from io import BytesIO, StringIO
 from typing import Any, cast
 
@@ -13,6 +14,11 @@ import anthropic
 import streamlit as st
 from dotenv import load_dotenv
 from streamlit.runtime.uploaded_file_manager import UploadedFile
+
+# Ensure repo root is in Python path (so "apps" imports work)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
 # Load environment variables
 load_dotenv()

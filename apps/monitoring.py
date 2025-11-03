@@ -7,11 +7,17 @@ Supports:
 
 import logging
 import os
+import sys
 import time
 from collections.abc import Callable
 from typing import Any
 
 from dotenv import load_dotenv
+
+# Ensure repo root is in Python path (so "apps" imports work)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
 # Load environment variables
 load_dotenv()

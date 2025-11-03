@@ -4,11 +4,17 @@ Handles small documents well.
 """
 
 import os
+import sys
 from typing import Any
 
 import anthropic
 import streamlit as st
 from dotenv import load_dotenv
+
+# Ensure repo root is in Python path (so "apps" imports work)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
 # Load environment variables
 load_dotenv()

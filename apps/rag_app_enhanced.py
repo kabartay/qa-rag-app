@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import random
+import sys
 import time
 from typing import Any, cast
 
@@ -18,6 +19,11 @@ from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
 
 from apps.monitoring import get_monitoring_status, log_cache_event, traced
+
+# Ensure repo root is in Python path (so "apps" imports work)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
 # Load environment variables
 load_dotenv()
