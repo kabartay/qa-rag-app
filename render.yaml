@@ -1,4 +1,4 @@
-# Deploys Simple RAG, Enhanced RAG, Evaluator, and QA Generator + shared Redis cache
+# Deploys Simple RAG, Enhanced RAG, Evaluator, and Q&A Generator with shared Redis cache
 
 services:
   - type: web
@@ -6,14 +6,13 @@ services:
     env: docker
     plan: free
     region: virginia
-    startCommand: streamlit run apps/rag_app.py --server.port=8501
     envVars:
       - key: USE_CACHE
         value: true
       - key: REDIS_URL
         fromService:
           name: qa-rag-cache
-          type: redis
+          property: connectionString
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: COHERE_API_KEY
@@ -34,14 +33,13 @@ services:
     env: docker
     plan: free
     region: virginia
-    startCommand: streamlit run apps/rag_app_enhanced.py --server.port=8502
     envVars:
       - key: USE_CACHE
         value: true
       - key: REDIS_URL
         fromService:
           name: qa-rag-cache
-          type: redis
+          property: connectionString
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: COHERE_API_KEY
@@ -62,14 +60,13 @@ services:
     env: docker
     plan: free
     region: virginia
-    startCommand: streamlit run apps/rag_evaluator.py --server.port=8503
     envVars:
       - key: USE_CACHE
         value: true
       - key: REDIS_URL
         fromService:
           name: qa-rag-cache
-          type: redis
+          property: connectionString
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: LANGSMITH_API_KEY
@@ -86,14 +83,13 @@ services:
     env: docker
     plan: free
     region: virginia
-    startCommand: streamlit run apps/qa_generator.py --server.port=8504
     envVars:
       - key: USE_CACHE
         value: true
       - key: REDIS_URL
         fromService:
           name: qa-rag-cache
-          type: redis
+          property: connectionString
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: LANGSMITH_API_KEY
@@ -105,7 +101,9 @@ services:
       - key: LANGSMITH_ENDPOINT
         value: https://api.smith.langchain.com
 
-  # Redis Cache (shared)
+  # Shared Redis Cache
   - type: redis
     name: qa-rag-cache
     plan: free
+    region: virginia
+    ipAllowList: [] # Empty list means allow all Render services in the same network
