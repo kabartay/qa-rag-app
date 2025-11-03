@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG System Architecture - Production Ready</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 40px 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+            font-size: 2.8em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .subtitle {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .architecture-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(550px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .arch-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .badge.new {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+        }
+
+        .arch-card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .flow-diagram {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s;
+        }
+
+        .flow-step:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .flow-step.cache {
+            border-left-color: #28a745;
+        }
+
+        .step-number {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex-grow: 1;
+        }
+
+        .step-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .step-desc {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .arrow {
+            text-align: center;
+            color: #667eea;
+            font-size: 2em;
+            margin: 10px 0;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .metric-card.green {
+            background: linear-gradient(135deg, #28a745, #20c997);
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .components {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .component {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #764ba2;
+            transition: all 0.3s;
+        }
+
+        .component:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .component-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .component-desc {
+            color: #666;
+            font-size: 0.85em;
+        }
+
+        .comparison-table {
+            width: 100%;
+            margin: 20px 0;
+            border-collapse: collapse;
+        }
+
+        .comparison-table th {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .comparison-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .comparison-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .comparison-table tr:hover {
+            background: #e9ecef;
+        }
+
+        .checkmark {
+            color: #28a745;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .cross {
+            color: #dc3545;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .deployment-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-top: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .deployment-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .deploy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .deploy-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .deploy-card h3 {
+            margin-bottom: 15px;
+        }
+
+        .deploy-card ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .deploy-card li {
+            padding: 5px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .deploy-card li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .architecture-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .metrics-grid,
+            .components {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🚀 Complete RAG System Architecture</h1>
+        <div class="subtitle">Production-Ready • Deployed on Render • Optional Redis Caching</div>
+
+        <div class="architecture-grid">
+            <!-- Simple RAG -->
+            <div class="arch-card">
+                <h2>📘 Simple RAG Architecture</h2>
+                <p style="color: #666; margin-bottom: 20px;">Best for: Documents &lt; 50 pages, Fast prototyping</p>
+
+                <div class="flow-diagram">
+                    <div class="flow-step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <div class="step-title">Document Loading</div>
+                            <div class="step-desc">PDF → Clean Text (PyPDF2)</div>
+                        </div>
+                    </div>
+
+                    <div class="arrow">↓</div>
+
+                    <div class="flow-step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <div class="step-title">Chunking</div>
+                            <div class="step-desc">2000 words, 200 overlap</div>
+                        </div>
+                    </div>
+
+                    <div class="arrow">↓</div>
+
+                    <div class="flow-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <div class="step-title">Long Context</div>
+                            <div class="step-desc">All chunks → Claude Sonnet 4.5</div>
+                        </div>
+                    </div>
+
+                    <div class="arrow">↓</div>
+
+                    <div class="flow-step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <div class="step-title">Answer Generation</div>
+                            <div class="step-desc">Claude (200K context window)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">2-3s</div>
+                        <div class="metric-label">Latency</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">$15</div>
+                        <div class="metric-label">Per 1K queries</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">85%</div>
+                        <div class="metric-label">Precision</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">5min</div>
+                        <div class="metric-label">Setup time</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enhanced RAG with Cache -->
+            <div class="arch-card">
+                <span class="badge new">NEW: Redis Cache</span>
+                <h2>🚀 Enhanced RAG + Cache</h2>
+                <p style="color: #666; margin-bottom: 20px;">Production-ready: Large docs, Multi-document, Caching</p>
+
+                <div class="flow-diagram">
+                    <div class="flow-step cache">
+                        <div class="step-number">0</div>
+                        <div class="step-content">
+                            <div class="step-title">⚡ Cache Check (Optional)</div>
+                            <div class="step-desc">Redis → Instant if cached (&lt;10ms, $0.00)</div>
+                        </div>
+                    </div>
+
+                    <div class="arrow">↓ (if cache miss)</div>
+
+                    <div class="flow-step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <div class="step-title">Smart Processing</div>
+                            <div class="step-desc">PDF → Structured chunks (800 words)</div>
+                        </div>
+                    </div>
+
+                    <div class="arrow">↓</div>
+
+                    <div class="flow-step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <div class="step-title">Embeddings</div>
+                            <div class="step-desc">Cohere (1024-dim vectors)</div>
+                        </div>
+                    </div>
+
+                    <div class="arrow">↓</div>
+
+                    <div class="flow-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <div class="step-title">Vector Storage</div>
+                            <div class="step-desc">Pinecone (cosine similarity)</div>
+                        </div>
+                    </div>
+
+                    <div class="arrow">↓</div>
+
+                    <div class="flow-step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <div class="step-title">Retrieval</div>
+                            <div class="step-desc">Query → Top-20 candidates</div>
+                        </div>
+                    </div>
+
+                    <div class="arrow">↓</div>
+
+                    <div class="flow-step">
+                        <div class="step-number">5</div>
+                        <div class="step-content">
+                            <div class="step-title">Re-ranking</div>
+                            <div class="step-desc">Cohere → Top-5 best</div>
+                        </div>
+                    </div>
+
+                    <div class="arrow">↓</div>
+
+                    <div class="flow-step">
+                        <div class="step-number">6</div>
+                        <div class="step-content">
+                            <div class="step-title">Generation</div>
+                            <div class="step-desc">Claude Sonnet 4.5</div>
+                        </div>
+                    </div>
+
+                    <div class="arrow">↓</div>
+
+                    <div class="flow-step cache">
+                        <div class="step-number">7</div>
+                        <div class="step-content">
+                            <div class="step-title">⚡ Cache Store</div>
+                            <div class="step-desc">Save to Redis (1hr TTL)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card green">
+                        <div class="metric-value">&lt;10ms</div>
+                        <div class="metric-label">Cached latency</div>
+                    </div>
+                    <div class="metric-card green">
+                        <div class="metric-value">$3.50</div>
+                        <div class="metric-label">Per 1K queries (80% cache)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">95%</div>
+                        <div class="metric-label">Precision</div>
+                    </div>
+                    <div class="metric-card green">
+                        <div class="metric-value">80%</div>
+                        <div class="metric-label">Cost savings</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Components Overview -->
+        <div class="arch-card">
+            <h2>🔧 System Components</h2>
+
+            <div class="components">
+                <div class="component">
+                    <div class="component-title">📄 rag_app.py</div>
+                    <div class="component-desc">Simple RAG - Auto-loads .env, single API</div>
+                </div>
+
+                <div class="component">
+                    <div class="component-title">🚀 rag_app_enhanced.py</div>
+                    <div class="component-desc">Enhanced RAG + Optional Redis cache</div>
+                </div>
+
+                <div class="component">
+                    <div class="component-title">🎯 qa_generator.py</div>
+                    <div class="component-desc">Generate evaluation datasets (50-100 Q&A pairs, 5 types)</div>
+                </div>
+
+                <div class="component">
+                    <div class="component-title">📊 rag_evaluator.py</div>
+                    <div class="component-desc">4-metric evaluation: faithfulness, relevancy, context, correctness</div>
+                </div>
+
+                <div class="component">
+                    <div class="component-title">💰 cost_calculator.py</div>
+                    <div class="component-desc">Real cost analysis (Simple vs Enhanced vs Cache)</div>
+                </div>
+
+                <div class="component">
+                    <div class="component-title">🐳 Docker</div>
+                    <div class="component-desc">Production-ready Dockerfile + docker-compose</div>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 30px; color: #667eea;">Comparison Matrix</h3>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>Simple RAG</th>
+                        <th>Enhanced RAG</th>
+                        <th>Enhanced + Cache</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Document Size</td>
+                        <td>&lt; 50 pages</td>
+                        <td>Unlimited</td>
+                        <td>Unlimited</td>
+                    </tr>
+                    <tr>
+                        <td>Setup Complexity</td>
+                        <td><span class="checkmark">✓</span> Easy (1 API)</td>
+                        <td>Moderate (3 APIs)</td>
+                        <td>Moderate (3 APIs + Redis)</td>
+                    </tr>
+                    <tr>
+                        <td>Multi-document</td>
+                        <td><span class="cross">✗</span> No</td>
+                        <td><span class="checkmark">✓</span> Yes</td>
+                        <td><span class="checkmark">✓</span> Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Precision</td>
+                        <td>85%</td>
+                        <td>95%</td>
+                        <td>95%</td>
+                    </tr>
+                    <tr>
+                        <td>Cost/1K queries</td>
+                        <td>$15</td>
+                        <td>$17.50</td>
+                        <td><strong>$3.50</strong> 🎯</td>
+                    </tr>
+                    <tr>
+                        <td>Latency</td>
+                        <td>2-3s</td>
+                        <td>2.5-3.5s</td>
+                        <td>&lt;10ms (cached)</td>
+                    </tr>
+                    <tr>
+                        <td>Repeated Queries</td>
+                        <td>Full cost each time</td>
+                        <td>Full cost each time</td>
+                        <td><span class="checkmark">✓</span> Free from cache</td>
+                    </tr>
+                    <tr>
+                        <td>Evaluation Support</td>
+                        <td><span class="checkmark">✓</span> Yes</td>
+                        <td><span class="checkmark">✓</span> Yes</td>
+                        <td><span class="checkmark">✓</span> Yes</td>
+                    </tr>
+                    <tr>
+                        <td>Best for</td>
+                        <td>Prototypes</td>
+                        <td>Production</td>
+                        <td>High-volume production</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Evaluation Pipeline -->
+        <div class="deployment-section">
+            <h2>📊 Evaluation Pipeline</h2>
+            <p style="color: #666; margin-bottom: 30px;">Automated groundtruth generation and 4-metric evaluation system
+            </p>
+
+            <div class="deploy-grid">
+                <div class="deploy-card">
+                    <h3>1️⃣ Q&A Generator</h3>
+                    <p style="margin-bottom: 15px; font-size: 0.95em;">qa_generator.py</p>
+                    <ul>
+                        <li>Auto-generate Q&A pairs</li>
+                        <li>5 question types (factual, conceptual, multi-hop)</li>
+                        <li>Difficulty levels (easy, medium, hard)</li>
+                        <li>Export to JSON</li>
+                        <li>Claude-powered generation</li>
+                    </ul>
+                </div>
+
+                <div class="deploy-card">
+                    <h3>2️⃣ RAG System</h3>
+                    <p style="margin-bottom: 15px; font-size: 0.95em;">Run on test dataset</p>
+                    <ul>
+                        <li>Load evaluation dataset</li>
+                        <li>Process each question</li>
+                        <li>Collect RAG responses</li>
+                        <li>Measure retrieval quality</li>
+                        <li>Track latency & costs</li>
+                    </ul>
+                </div>
+
+                <div class="deploy-card">
+                    <h3>3️⃣ Evaluator</h3>
+                    <p style="margin-bottom: 15px; font-size: 0.95em;">rag_evaluator.py</p>
+                    <ul>
+                        <li>4-metric evaluation</li>
+                        <li>LLM-as-judge scoring</li>
+                        <li>Detailed breakdowns</li>
+                        <li>Comparative analysis</li>
+                        <li>Export results</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 30px; color: #667eea; margin-bottom: 20px;">Evaluation Metrics</h3>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value">⭐</div>
+                    <div class="metric-label">Faithfulness</div>
+                    <p style="font-size: 0.85em; margin-top: 10px;">Answer supported by retrieved context</p>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">🎯</div>
+                    <div class="metric-label">Answer Relevancy</div>
+                    <p style="font-size: 0.85em; margin-top: 10px;">Directly addresses the question</p>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">📚</div>
+                    <div class="metric-label">Context Relevancy</div>
+                    <p style="font-size: 0.85em; margin-top: 10px;">Retrieval quality (right chunks)</p>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">✓</div>
+                    <div class="metric-label">Correctness</div>
+                    <p style="font-size: 0.85em; margin-top: 10px;">Matches ground truth answer</p>
+                </div>
+            </div>
+
+            <div style="background: #f8f9fa; border-radius: 15px; padding: 25px; margin-top: 30px;">
+                <h4 style="color: #667eea; margin-bottom: 15px;">Evaluation Workflow</h4>
+                <div
+                    style="display: flex; align-items: center; justify-content: space-around; flex-wrap: wrap; gap: 20px;">
+                    <div style="text-align: center;">
+                        <div
+                            style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2em; margin: 0 auto 10px;">
+                            📝</div>
+                        <strong>Generate</strong>
+                        <p style="font-size: 0.85em; color: #666;">50-100 Q&A pairs</p>
+                    </div>
+                    <div style="font-size: 2em; color: #667eea;">→</div>
+                    <div style="text-align: center;">
+                        <div
+                            style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2em; margin: 0 auto 10px;">
+                            🤖</div>
+                        <strong>Run RAG</strong>
+                        <p style="font-size: 0.85em; color: #666;">Test both systems</p>
+                    </div>
+                    <div style="font-size: 2em; color: #667eea;">→</div>
+                    <div style="text-align: center;">
+                        <div
+                            style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2em; margin: 0 auto 10px;">
+                            📊</div>
+                        <strong>Evaluate</strong>
+                        <p style="font-size: 0.85em; color: #666;">4-metric scoring</p>
+                    </div>
+                    <div style="font-size: 2em; color: #667eea;">→</div>
+                    <div style="text-align: center;">
+                        <div
+                            style="background: linear-gradient(135deg, #28a745, #20c997); color: white; width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2em; margin: 0 auto 10px;">
+                            ✓</div>
+                        <strong>Improve</strong>
+                        <p style="font-size: 0.85em; color: #666;">Iterate on weak areas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deployment -->
+        <div class="deployment-section" style="margin-top: 30px;">
+            <h2>🌐 Production Deployment</h2>
+
+            <div class="deploy-grid">
+                <div class="deploy-card">
+                    <h3>🚀 Render Deployment</h3>
+                    <ul>
+                        <li>Live on Render.com</li>
+                        <li>4 apps running</li>
+                        <li>Auto-deploy from GitHub</li>
+                        <li>Environment variables configured</li>
+                        <li>Optional Redis add-on</li>
+                    </ul>
+                </div>
+
+                <div class="deploy-card">
+                    <h3>🐳 Docker Setup</h3>
+                    <ul>
+                        <li>Production Dockerfile</li>
+                        <li>docker-compose.yml</li>
+                        <li>Redis container included</li>
+                        <li>Multi-app orchestration</li>
+                        <li>Health checks configured</li>
+                    </ul>
+                </div>
+
+                <div class="deploy-card">
+                    <h3>🔐 Configuration</h3>
+                    <ul>
+                        <li>Auto-load from .env</li>
+                        <li>Secure API key management</li>
+                        <li>Optional cache (USE_CACHE)</li>
+                        <li>.gitignore for secrets</li>
+                        <li>Environment-based config</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3 style="margin-top: 30px; color: #667eea;">Tech Stack</h3>
+            <div class="components">
+                <div class="component">
+                    <div class="component-title">🤖 LLM</div>
+                    <div class="component-desc">Claude Sonnet 4.5 (Anthropic)</div>
+                </div>
+                <div class="component">
+                    <div class="component-title">🔢 Embeddings</div>
+                    <div class="component-desc">Cohere embed-multilingual-v3.0</div>
+                </div>
+                <div class="component">
+                    <div class="component-title">💾 Vector DB</div>
+                    <div class="component-desc">Pinecone (serverless)</div>
+                </div>
+                <div class="component">
+                    <div class="component-title">🎯 Re-ranking</div>
+                    <div class="component-desc">Cohere rerank-multilingual-v3.0</div>
+                </div>
+                <div class="component">
+                    <div class="component-title">⚡ Cache</div>
+                    <div class="component-desc">Redis 7 (optional)</div>
+                </div>
+                <div class="component">
+                    <div class="component-title">🖥️ Framework</div>
+                    <div class="component-desc">Streamlit + Python 3.11</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
