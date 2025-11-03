@@ -5,19 +5,20 @@ Supports:
 - Prometheus metrics (local export on port 9100)
 """
 
-import logging
+# noqa: E402
 import os
 import sys
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
+import logging
 import time
 from collections.abc import Callable
 from typing import Any
 
 from dotenv import load_dotenv
-
-# Ensure repo root is in Python path (so "apps" imports work)
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
 
 # Load environment variables
 load_dotenv()

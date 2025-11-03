@@ -3,9 +3,15 @@ Unified RAG Evaluator.
 Compare Simple vs Enhanced RAG.
 """
 
-import json
+# noqa: E402
 import os
 import sys
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
+import json
 import time
 from datetime import datetime
 from typing import Any, cast
@@ -13,11 +19,6 @@ from typing import Any, cast
 import anthropic
 import streamlit as st
 from dotenv import load_dotenv
-
-# Ensure repo root is in Python path (so "apps" imports work)
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
 
 # Load environment variables
 load_dotenv()

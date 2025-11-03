@@ -109,6 +109,10 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+"apps/rag_app*.py" = ["E402"]
+"apps/rag_evaluator.py" = ["E402"]
+"apps/qa_generator.py" = ["E402"]
+"apps/monitoring.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.10"

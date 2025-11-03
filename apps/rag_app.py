@@ -3,18 +3,19 @@ Simple RAG without Vector DB or re-ranking, just using Claude API.
 Handles small documents well.
 """
 
+# noqa: E402
 import os
 import sys
+
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
 from typing import Any
 
 import anthropic
 import streamlit as st
 from dotenv import load_dotenv
-
-# Ensure repo root is in Python path (so "apps" imports work)
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
 
 # Load environment variables
 load_dotenv()
