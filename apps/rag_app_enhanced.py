@@ -17,7 +17,6 @@ import cohere
 import streamlit as st
 from dotenv import load_dotenv
 from pinecone import Pinecone
-from pinecone.config import ServerlessSpec
 
 from apps.monitoring import get_monitoring_status, log_cache_event, traced
 
@@ -61,7 +60,8 @@ class EnhancedRAG:
                     name=self.index_name,
                     dimension=self.embedding_dimension,
                     metric="cosine",
-                    spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+                    cloud="aws",
+                    region="us-east-1",
                 )
                 time.sleep(1)
 
