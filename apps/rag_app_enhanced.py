@@ -1,9 +1,11 @@
 """
 Enhanced RAG with Pinecone as Vector DB and Cohere for re-ranking.
 Handles large documents and multi-document collections.
+Added Redis caching to reduce cost.
 """
 
 import hashlib
+import json
 import os
 import random
 import time
@@ -282,11 +284,156 @@ Answer:"""
             }
 
 
+class RedisCache:
+    """Redis cache to reduce cost."""
+
+    def __init__(self, redis_url: str | None = None, ttl: int = 3600, enabled: bool = True) -> None:
+        self.ttl = ttl
+        self.enabled = False
+        self.redis_client: "redis.Redis" | None = None
+
+        # Check environment variable for cache control
+        use_cache = os.getenv("USE_CACHE", "true").lower() in ("true", "1", "yes")
+        if not enabled or not use_cache or not redis_url:
+            return
+
+        try:
+            import redis
+
+            self.redis_client = redis.from_url(
+                redis_url,
+                decode_responses=True,
+                socket_connect_timeout=5,
+            )
+            self.redis_client.ping()
+            self.enabled = True
+        except ImportError:
+            st.warning("Redis package not installed.")
+        except Exception as e:
+            st.warning(f"Redis connection failed: {e}")
+
+    def get(self, question: str, doc_id: str = "default") -> dict[str, Any] | None:
+        if not self.enabled or not self.redis_client:
+            return None
+        try:
+            key = f"rag:{hashlib.md5(f'{doc_id}:{question}'.encode()).hexdigest()}"
+            cached = self.redis_client.get(key)
+            return json.loads(cached) if cached else None
+        except Exception as e:
+            st.warning(f"Cache get error: {e}")
+            return None
+
+    def set(self, question: str, response: dict[str, Any], doc_id: str = "default") -> bool:
+        if not self.enabled or not self.redis_client:
+            return False
+        try:
+            key = f"rag:{hashlib.md5(f'{doc_id}:{question}'.encode()).hexdigest()}"
+            self.redis_client.setex(key, self.ttl, json.dumps(response))
+            return True
+        except Exception as e:
+            st.warning(f"Cache set error: {e}")
+            return False
+
+    def clear(self, pattern: str = "rag:*") -> int:
+        if not self.enabled or not self.redis_client:
+            return 0
+        try:
+            keys = list(self.redis_client.scan_iter(pattern))
+            count: int = int(self.redis_client.delete(*keys)) if keys else 0
+            return count
+        except Exception as e:
+            st.warning(f"Cache clear error: {e}")
+            return 0
+
+    def stats(self) -> dict[str, Any]:
+        if not self.enabled or not self.redis_client:
+            return {"enabled": False, "message": "Cache disabled (Redis not available)"}
+        try:
+            info = self.redis_client.info("stats")
+            keys_count = len(list(self.redis_client.scan_iter("rag:*")))
+            hits = info.get("keyspace_hits", 0)
+            misses = info.get("keyspace_misses", 0)
+            return {
+                "enabled": True,
+                "total_keys": keys_count,
+                "hits": hits,
+                "misses": misses,
+                "hit_rate": hits / max(hits + misses, 1) * 100,
+            }
+        except Exception as e:
+            st.warning(f"Cache stats error: {e}")
+            return {"enabled": False, "error": "Stats unavailable"}
+
+
+def render_cache_sidebar(cache: "RedisCache") -> None:
+    """Render cache status in sidebar"""
+    st.sidebar.markdown("---")
+    st.sidebar.header("Cache Status")
+
+    if not cache.enabled:
+        st.sidebar.info("Cache disabled")
+        st.sidebar.caption("Set REDIS_URL in .env to enable")
+        st.sidebar.caption("Or set USE_CACHE=false to explicitly disable")
+        return
+
+    stats = cache.stats()
+
+    if stats.get("enabled"):
+        col1, col2 = st.sidebar.columns(2)
+        with col1:
+            st.metric("Cached Items", stats.get("total_keys", 0))
+            st.metric("Cache Hits", stats.get("hits", 0))
+        with col2:
+            st.metric("Hit Rate", f"{stats.get('hit_rate', 0):.1f}%")
+            st.metric("Cache Misses", stats.get("misses", 0))
+
+        if stats.get("hits", 0) > 0:
+            savings = stats["hits"] * 0.025
+            st.sidebar.success(f"Saved ~${savings:.2f}")
+
+        col1, col2 = st.sidebar.columns(2)
+        with col1:
+            if st.sidebar.button("Clear Cache"):
+                count = cache.clear()
+                st.sidebar.success(f"Cleared {count} items")
+                st.rerun()
+        with col2:
+            if st.sidebar.button("Refresh"):
+                st.rerun()
+
+        st.sidebar.success("Cache Active")
+    else:
+        st.sidebar.error("Cache Error")
+        st.sidebar.caption(stats.get("error", "Unknown error"))
+
+
 def main() -> None:
+    load_dotenv(override=True)  # Ensure .env is loaded before cache
     st.set_page_config(page_title="Enhanced RAG System", page_icon="🔸", layout="wide")
 
     st.title("Enhanced RAG-based Question-Answering System")
-    st.markdown("**Production-grade RAG with Pinecone Vector DB + Cohere Re-ranking**")
+    st.markdown("**RAG with Pinecone Vector DB + Cohere Re-ranking**")
+
+    # Initialize cache
+    if "cache" not in st.session_state:
+        use_cache = os.getenv("USE_CACHE", "true").lower() in ("true", "1", "yes")
+        redis_url = os.getenv("REDIS_URL", "redis://127.0.0.1:6379")
+
+        # Detect Codespaces / Docker environment
+        if os.path.exists("/.dockerenv"):
+            # Codespaces usually runs Redis on localhost
+            if "CODESPACES" in os.environ:
+                redis_url = "redis://127.0.0.1:6379"
+            else:
+                redis_url = "redis://host.docker.internal:6379"
+
+        # Debug
+        st.sidebar.info(f"Using Redis at: {redis_url}")
+
+        st.session_state.cache = RedisCache(redis_url=redis_url, ttl=3600, enabled=use_cache)
+
+        # Show cache in the sidebar (only for demo)
+        render_cache_sidebar(st.session_state.cache)
 
     # Sidebar configuration
     with st.sidebar:
@@ -305,17 +452,6 @@ def main() -> None:
             st.info(f"Loaded from env: {', '.join(loaded)}")
         else:
             st.warning("No API keys found in environment")
-
-        # Load from environment with fallback to user input
-        # anthropic_key = st.text_input(
-        #     "Anthropic API Key", value=os.getenv("ANTHROPIC_API_KEY", ""), type="password"
-        # )
-        # pinecone_key = st.text_input(
-        #     "Pinecone API Key", value=os.getenv("PINECONE_API_KEY", ""), type="password"
-        # )
-        # cohere_key = st.text_input(
-        #     "Cohere API Key", value=os.getenv("COHERE_API_KEY", ""), type="password"
-        # )
 
         anthropic_key = st.text_input(
             "Anthropic API Key" + (" ✓" if api_keys["Anthropic"] else ""),
@@ -491,50 +627,65 @@ def main() -> None:
                             for score in meta["scores"][:3]:
                                 st.write(f"  - Chunk {score['chunk_id']}: {score['relevance']:.3f}")
 
-                        st.text_area("Context", meta.get("context", "")[:1000] + "...", height=150)
+                        st.text_area(
+                            "Context",
+                            meta.get("context", "")[:1000] + "...",
+                            height=150,
+                            key=f"context_meta_{int(time.time() * 1000)}",  # to avoid same label text and no unique key
+                        )
 
         # Chat input
         if question := st.chat_input("Ask anything about your documents..."):
+
+            cache = st.session_state.cache
+
+            # Check if cached
+            cached = cache.get(question, doc_name)
+            if cached:
+                result = cached
+                st.toast("⚡ Cached result used!", icon="⚡")
+            else:
+                with st.spinner("Searching and analyzing..."):
+                    result = st.session_state.enhanced_rag.answer_question(question)
+                    cache.set(question, result, doc_name)
+
             # Add user message
             st.session_state.messages.append({"role": "user", "content": question})
 
             with st.chat_message("user"):
                 st.markdown(question)
 
-            # Generate answer
+            # Show assistant answer (either cached or fresh)
             with st.chat_message("assistant"):
-                with st.spinner("Searching and analyzing..."):
-                    result = st.session_state.enhanced_rag.answer_question(question)
+                st.markdown(result["answer"])
 
-                    st.markdown(result["answer"])
+                with st.expander("Retrieval Details"):
+                    st.write(f"**Chunks used:** {result['chunks_used']}")
 
-                    with st.expander("Retrieval Details"):
-                        st.write(f"**Chunks used:** {result['chunks_used']}")
+                    if result.get("scores"):
+                        st.write("**Top relevance scores:**")
+                        for score in result["scores"][:3]:
+                            st.write(f"  - Chunk {score['chunk_id']}: {score['relevance']:.3f}")
 
-                        if result.get("scores"):
-                            st.write("**Top relevance scores:**")
-                            for score in result["scores"][:3]:
-                                st.write(f"  - Chunk {score['chunk_id']}: {score['relevance']:.3f}")
-
-                        st.text_area(
-                            "Retrieved Context",
-                            result["context_used"][:1000] + "...",
-                            height=150,
-                            key=f"context_{len(st.session_state.messages)}",
-                        )
-
-                    # Save to history
-                    st.session_state.messages.append(
-                        {
-                            "role": "assistant",
-                            "content": result["answer"],
-                            "metadata": {
-                                "chunks_used": result["chunks_used"],
-                                "scores": result.get("scores", []),
-                                "context": result["context_used"],
-                            },
-                        }
+                    st.text_area(
+                        "Retrieved Context",
+                        result["context_used"][:1000] + "...",
+                        height=150,
+                        key=f"context_{len(st.session_state.messages)}",
                     )
+
+            # Save to history
+            st.session_state.messages.append(
+                {
+                    "role": "assistant",
+                    "content": result["answer"],
+                    "metadata": {
+                        "chunks_used": result["chunks_used"],
+                        "scores": result.get("scores", []),
+                        "context": result["context_used"],
+                    },
+                }
+            )
 
         # Clear chat
         if st.button("Clear Chat"):
